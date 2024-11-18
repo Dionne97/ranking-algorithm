@@ -1,6 +1,8 @@
 import unittest
+import sys
+from unittest.mock import patch, mock_open
 from collections import defaultdict
-from ranking import parse_match_results, rank_teams, format_output
+from ranking import parse_match_results, rank_teams, format_output,main
 
 
 class TestLeagueRanker(unittest.TestCase):
@@ -107,6 +109,58 @@ class TestLeagueRanker(unittest.TestCase):
         ranked = rank_teams(scores)
         output = format_output(ranked)
         self.assertEqual(output, expected_output)
+    
+    def test_read_from_file(self):
+        input_data = (
+            "Lions 3, Snakes 3\n"
+            "Tarantulas 1, FC Awesome 0\n"
+            "Lions 1, FC Awesome 1\n"
+            "Tarantulas 3, Snakes 1\n"
+            "Lions 4, Grouches 0"
+        )
+        expected_output = (
+            "1. Tarantulas, 6 pts\n"
+            "2. Lions, 5 pts\n"
+            "3. FC Awesome, 1 pt\n"
+            "3. Snakes, 1 pt\n"
+            "5. Grouches, 0 pts"
+        )
+
+        with patch("builtins.open", mock_open(read_data=input_data)):
+            with patch("sys.argv", ["league_ranker.py", "input.txt"]):
+                with patch("sys.stdout", new_callable=lambda: sys.stdout):
+                    with open("input.txt", "r") as file:
+                        input_lines = file.read().strip().split("\n")
+                    output = main(input_lines)
+                    self.assertEqual(output.strip(), expected_output)
+
+    def test_read_from_stdin(self):
+        input_data = (
+            "Lions 3, Snakes 3\n"
+            "Tarantulas 1, FC Awesome 0\n"
+            "Lions 1, FC Awesome 1\n"
+            "Tarantulas 3, Snakes 1\n"
+            "Lions 4, Grouches 0"
+        )
+        expected_output = (
+            "1. Tarantulas, 6 pts\n"
+            "2. Lions, 5 pts\n"
+            "3. FC Awesome, 1 pt\n"
+            "3. Snakes, 1 pt\n"
+            "5. Grouches, 0 pts"
+        )
+
+        with patch("sys.stdin", mock_open(read_data=input_data)):
+            with patch("sys.argv", ["league_ranker.py"]):  # No file argument
+                input_lines = input_data.strip().split("\n")
+                output = main(input_lines)
+                self.assertEqual(output.strip(), expected_output)
+
+    def test_file_not_found(self):
+        with patch("sys.argv", ["league_ranker.py", "nonexistent.txt"]):
+            with self.assertRaises(FileNotFoundError):
+                with open("nonexistent.txt", "r") as file:
+                    pass
 
 
 if __name__ == "__main__":
